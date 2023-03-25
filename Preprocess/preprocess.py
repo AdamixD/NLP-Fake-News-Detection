@@ -7,7 +7,7 @@ from spylls.hunspell import Dictionary
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
-
+from utils import *
 
 
 class Preprocess:
@@ -21,7 +21,7 @@ class Preprocess:
         """
         self.df = df
 
-    def preprocess(self) -> None:
+    def preprocess(self, path: str) -> None:
         """
         most important method here, performs full dataframe preprocess
         changes occurences in 'text' column
@@ -39,6 +39,8 @@ class Preprocess:
         self.convert_to_lowercase()
         self.remove_stopwords()
         self.lemmatization()
+        self.save_to_json(path)
+
 
     @staticmethod
     def __find_hashtags(row: pd.DataFrame) -> list:
@@ -166,9 +168,10 @@ class Preprocess:
         """
         method saving dataframe to .json file
         if path is not specified, dataframe is saved in
-        './results/{dataframe_name}'
+        './processed/{dataframe_name}'
         """
-        self.df.to_json(path, orient="records", lines=True)
+        save_path = path_to_save(path)
+        self.df.to_json(save_path, orient="records", lines=True)
 
     @staticmethod
     def __remove_stopwords_row(row: pd.DataFrame) -> str:
