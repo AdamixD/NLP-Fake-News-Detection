@@ -5,6 +5,10 @@ import string
 from textblob import TextBlob
 from spylls.hunspell import Dictionary
 from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+
+
 
 class Preprocess:
     """
@@ -33,9 +37,8 @@ class Preprocess:
         self.spellcheck()
         self.analyze_sentiment()
         self.convert_to_lowercase()
-        #self.remove_stopwords()
-        #self.lemmatization()
-        #self.save_to_json()
+        self.remove_stopwords()
+        self.lemmatization()
 
     @staticmethod
     def __find_hashtags(row: pd.DataFrame) -> list:
@@ -158,3 +161,53 @@ class Preprocess:
 
     def convert_to_lowercase(self) -> None:
         self.df['text'] = self.df['text'].apply(lambda text: text.lower())
+
+    def save_to_json(self, path: str = '') -> None:
+        """
+        method saving dataframe to .json file
+        if path is not specified, dataframe is saved in
+        './results/{dataframe_name}'
+        """
+        self.df.to_json(path, orient="records", lines=True)
+
+    @staticmethod
+    def __remove_stopwords_row(row: pd.DataFrame) -> str:
+        """
+        method performs removing stopwords on whole dataframe
+        :param row: row from dataframe
+        :return: text without stopwords
+        """
+        text_tokens = word_tokenize(row['text'])
+        tokens_without_sw = [word for word in text_tokens
+                             if word not in stopwords.words()]
+
+        return ' '.join(tokens_without_sw)
+
+    def remove_stopwords(self) -> None:
+        """
+        method performs removing stopwords on whole dataframe
+        """
+        self.df['text'] = self.df.apply(
+            lambda row: self.__remove_stopwords_row(row), axis=1
+            )
+        
+    @staticmethod
+    def __lemmatize_text_row(row: pd.DataFrame) -> str:
+        """
+        method performs lemmatization on one row
+        :param row: row from dataframe
+        :return: text after lemmatization
+        """
+        lemmatizer = WordNetLemmatizer()
+        tokens = word_tokenize(row['text'])
+        new_text = [lemmatizer.lemmatize(token) for token in tokens]
+
+        return ' '.join(new_text)
+
+    def lemmatization(self) -> None:
+        """
+        method performs lemmatization on whole dataframe
+        """
+        self.df['text'] = self.df.apply(
+            lambda row: self.__lemmatize_text_row(row), axis=1
+            )
