@@ -14,40 +14,42 @@ class Preprocess:
     """
     Class for preprocessing data related to news
     """
-    def __init__(self, df) -> None:
+
+    def __init__(self, df, path) -> None:
         """
-        saves pandas.DataFrame as an atribute
+        saves pandas.DataFrame as an attribute
         :param df: analized dataframe
+        :param path: path to data
         """
         self.df = df
+        self.path = path
 
-    def preprocess(self, path: str) -> None:
+    def preprocess(self) -> None:
         """
-        most important method here, performs full dataframe preprocess
+        Methodperforms full dataframe preprocess
         changes occurences in 'text' column
         adds changes to dataframe in place
         saves to .json file
         """
-        #self.links_preprocess()
-        #self.references_preprocess()
+        # self.links_preprocess()
+        # self.references_preprocess()
         self.preprocess_hashtags()
         self.preprocess_emojis()
         self.remove_unicode_chars()
         self.preprocess_punctuation()
-        self.spellcheck()
+        self.check_spelling()
         self.analyze_sentiment()
         self.convert_to_lowercase()
         self.remove_stopwords()
-        self.lemmatization()
-        self.save_to_json(path)
-
+        self.lemmatize()
+        self.save_to_json(self.path)
 
     @staticmethod
     def __find_hashtags(row: pd.DataFrame) -> list:
         hashtags = re.findall(r"#\w+", row['text'])
         hashtags = [re.sub(r"^#", "", hashtag) for hashtag in hashtags]
         return hashtags
-    
+
     @staticmethod
     def __remove_hashtags(row: pd.DataFrame) -> str:
         return re.sub(r"#", "", row['text'])
@@ -59,23 +61,6 @@ class Preprocess:
         """
         self.df['hashtags'] = self.df.apply(self.__find_hashtags, axis=1)
         self.df['text'] = self.df.apply(self.__remove_hashtags, axis=1)
-    
-
-    @staticmethod
-    def __remove_punctuation(row: pd.DataFrame) -> str:
-        """
-        remove punctuation from text
-        :param row: row from dataframe
-        :return: text after removing punctuation
-        """
-        return "".join([char for char in row['text'] if char not in string.punctuation])
-
-    def preprocess_punctuation(self) -> None:
-        """
-        method removes punctuation from whole dataset
-        """
-        self.df['text'] = self.df.apply(self.__remove_punctuation, axis=1)
-
 
     @staticmethod
     def __find_emojis(row: pd.DataFrame) -> list:
@@ -104,31 +89,30 @@ class Preprocess:
         self.df['emojis'] = self.df.apply(self.__interpret_emojis, axis=1)
         self.df['text'] = self.df.apply(self.__remove_emojis, axis=1)
 
+    @staticmethod
+    def __remove_unicode_chars_row(row: pd.DataFrame) -> str:
+        return row['text'].encode("ascii", "ignore").decode()
+
+    def remove_unicode_chars(self) -> None:
+        self.df['text'] = self.df.apply(self.__remove_unicode_chars_row, axis=1)
 
     @staticmethod
-    def __define_sentiment(row: pd.DataFrame) -> str:
+    def __remove_punctuation(row: pd.DataFrame) -> str:
         """
-        method translates sentiment od the text from numerical
-        divides sentiment to: positive, neutral, negative
-        :return: name of the sentiment
+        remove punctuation from text
+        :param row: row from dataframe
+        :return: text after removing punctuation
         """
-        return 'negative' if row['polarity'] < 0 else 'positive' if row['polarity'] > 0 else 'neutral'
+        return "".join([char for char in row['text'] if char not in string.punctuation])
 
-    def analyze_sentiment(self) -> None:
+    def preprocess_punctuation(self) -> None:
         """
-        method creates new columns:
-        * polarity - with the senimenty polarity of the text (numerical value)
-        * subjectivity - with numerical subjectivity of the text
-        * sentiment - string with translates and simmplifies polarity
+        method removes punctuation from whole dataset
         """
-        sentiment_items = [TextBlob(text) for text in self.df['text'].tolist()]
-        self.df['polarity'] = [text.sentiment.polarity for text in sentiment_items]
-        self.df['subjectivity'] = [text.sentiment.subjectivity for text in sentiment_items]
-        self.df['sentiment'] = self.df.apply(self.__define_sentiment, axis=1)
-
+        self.df['text'] = self.df.apply(self.__remove_punctuation, axis=1)
 
     @staticmethod
-    def __spellcheck_on_row(row: pd.DataFrame) -> str:
+    def __check_spelling_on_row(row: pd.DataFrame) -> str:
         text_tokens = word_tokenize(row['text'])
         dictionary = Dictionary.from_files('en_US')
         new_text = []
@@ -145,33 +129,32 @@ class Preprocess:
 
         return ' '.join(new_text)
 
-    def spellcheck(self) -> None:
-        self.df['text'] = self.df.apply(
-            lambda row: self.__spellcheck_on_row(row), axis=1
-            )
-        
+    def check_spelling(self) -> None:
+        self.df['text'] = self.df.apply(self.__check_spelling_on_row, axis=1)
 
     @staticmethod
-    def __remove_unicode_chars_row(row: pd.DataFrame) -> str:
-        return row['text'].encode("ascii", "ignore").decode()
+    def __define_sentiment(row: pd.DataFrame) -> str:
+        """
+        method translates sentiment od the text from numerical
+        divides sentiment to: positive, neutral, negative
+        :return: name of the sentiment
+        """
+        return 'negative' if row['polarity'] < 0 else 'positive' if row['polarity'] > 0 else 'neutral'
 
-    def remove_unicode_chars(self) -> None:
-        self.df['text'] = self.df.apply(
-            lambda row: self.__remove_unicode_chars_row(row), axis=1
-            )
-        
+    def analyze_sentiment(self) -> None:
+        """
+        method creates new columns:
+        * polarity - with the sentiment polarity of the text (numerical value)
+        * subjectivity - with numerical subjectivity of the text
+        * sentiment - string with translates and simplifies polarity
+        """
+        sentiment_items = [TextBlob(text) for text in self.df['text'].tolist()]
+        self.df['polarity'] = [text.sentiment.polarity for text in sentiment_items]
+        self.df['subjectivity'] = [text.sentiment.subjectivity for text in sentiment_items]
+        self.df['sentiment'] = self.df.apply(self.__define_sentiment, axis=1)
 
     def convert_to_lowercase(self) -> None:
         self.df['text'] = self.df['text'].apply(lambda text: text.lower())
-
-    def save_to_json(self, path: str = '') -> None:
-        """
-        method saving dataframe to .json file
-        if path is not specified, dataframe is saved in
-        './processed/{dataframe_name}'
-        """
-        save_path = path_to_save(path)
-        self.df.to_json(save_path, orient="records", lines=True)
 
     @staticmethod
     def __remove_stopwords_row(row: pd.DataFrame) -> str:
@@ -181,8 +164,9 @@ class Preprocess:
         :return: text without stopwords
         """
         text_tokens = word_tokenize(row['text'])
-        tokens_without_sw = [word for word in text_tokens
-                             if word not in stopwords.words()]
+        tokens_without_sw = [
+            word for word in text_tokens if word not in stopwords.words()
+        ]
 
         return ' '.join(tokens_without_sw)
 
@@ -190,10 +174,8 @@ class Preprocess:
         """
         method performs removing stopwords on whole dataframe
         """
-        self.df['text'] = self.df.apply(
-            lambda row: self.__remove_stopwords_row(row), axis=1
-            )
-        
+        self.df['text'] = self.df.apply(self.__remove_stopwords_row, axis=1)
+
     @staticmethod
     def __lemmatize_text_row(row: pd.DataFrame) -> str:
         """
@@ -207,10 +189,17 @@ class Preprocess:
 
         return ' '.join(new_text)
 
-    def lemmatization(self) -> None:
+    def lemmatize(self) -> None:
         """
         method performs lemmatization on whole dataframe
         """
-        self.df['text'] = self.df.apply(
-            lambda row: self.__lemmatize_text_row(row), axis=1
-            )
+        self.df['text'] = self.df.apply(self.__lemmatize_text_row, axis=1)
+
+    def save_to_json(self, path: str = '') -> None:
+        """
+        method saving dataframe to .json file
+        if path is not specified, dataframe is saved in
+        './processed/{dataframe_name}'
+        """
+        save_path = path_to_save(path)
+        self.df.to_json(save_path, orient="records", lines=True)
