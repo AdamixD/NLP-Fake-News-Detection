@@ -1,8 +1,8 @@
 import pandas as pd
 
-from preprocess import Preprocess
+from preprocess.preprocess import Preprocess
 
-WORLD_NEWS_DATA_PATH = '../data/basic/world_news'
+WORLD_NEWS_DATA_PATH = "data/basic/world_news"
 
 
 class WorldNewsPreprocess(Preprocess):
@@ -12,13 +12,12 @@ class WorldNewsPreprocess(Preprocess):
 
     def __init__(self, path: str = WORLD_NEWS_DATA_PATH) -> None:
         """
-        Constructs all the necessary attributes for the **WorldNewsPreprocess** object.
+        Constructs all the necessary attributes for the **WorldNewsPreprocess** class object.
         :param path: path to dataset (*world_news* default)
         """
 
         prepared_data = self.prepare_world_news_data(path)
         super().__init__(prepared_data, path)
-        super().preprocess()
 
     @staticmethod
     def prepare_world_news_data(path: str = WORLD_NEWS_DATA_PATH) -> pd.DataFrame:
@@ -28,7 +27,7 @@ class WorldNewsPreprocess(Preprocess):
         :return: prepared world news data
         """
 
-        df = pd.read_csv(path + '/world_news.csv')
+        df = pd.read_csv(path + "/world_news.csv")
         df.drop(columns=['id', 'author'], inplace=True)
         df.text = df.title + df.text
         df.drop(columns=['title'], inplace=True)

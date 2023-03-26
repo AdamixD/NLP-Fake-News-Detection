@@ -1,8 +1,8 @@
 import pandas as pd
 
-from preprocess import Preprocess
+from preprocess.preprocess import Preprocess
 
-COVID_DATA_PATH = '../data/basic/covid'
+COVID_DATA_PATH = "data/basic/covid"
 
 
 class CovidPreprocess(Preprocess):
@@ -12,13 +12,12 @@ class CovidPreprocess(Preprocess):
 
     def __init__(self, path: str = COVID_DATA_PATH) -> None:
         """
-        Constructs all the necessary attributes for the **CovidPreprocess** object.
+        Constructs all the necessary attributes for the **CovidPreprocess** class object.
         :param path: path to dataset (*covid* default)
         """
 
         prepared_data = self.prepare_covid_data(path)
         super().__init__(prepared_data, path)
-        super().preprocess()
 
     @staticmethod
     def prepare_covid_data(path: str = COVID_DATA_PATH) -> pd.DataFrame:
@@ -28,7 +27,7 @@ class CovidPreprocess(Preprocess):
         :return: prepared covid data
         """
 
-        df = pd.read_csv(path + '/covid.csv')
-        df.rename(columns={"outcome": "label"}, inplace=True)
+        df = pd.read_csv(path + "/covid.csv")
+        df.rename(columns={"headlines": "text", "outcome": "label"}, inplace=True)
 
         return df
