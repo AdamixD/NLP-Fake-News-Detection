@@ -10,6 +10,7 @@ from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
 from spylls.hunspell import Dictionary
 from textblob import TextBlob
+from googletrans import Translator
 
 nltk.download('punkt')
 nltk.download('stopwords')
@@ -22,7 +23,7 @@ class Preprocess:
     The class responsible for preprocessing data
     """
 
-    def __init__(self, df: pd.DataFrame, path: str) -> None:
+    def __init__(self, df: pd.DataFrame, path: str, language="en_US") -> None:
         """
         Constructs all the necessary attributes for the **Preprocess** class object.
         :param df: dataframe containing data to preprocessing
@@ -31,6 +32,7 @@ class Preprocess:
 
         self.df = df
         self.path = path
+        self.language = language
 
     def preprocess(self, save_path: str = None) -> None:
         """
@@ -50,6 +52,10 @@ class Preprocess:
 
         logging.info("Emojis preprocessing ...")
         self.preprocess_emojis()
+
+        if "en" not in self.language:
+            logging.info("Translation  ...")
+            self.translate()
 
         logging.info("Removing unicode chars ...")
         self.remove_unicode_chars()
@@ -73,7 +79,7 @@ class Preprocess:
         self.lemmatize()
 
         logging.info("Saving preprocessed data ...")
-        self.save_to_json(save_path)
+        self.save_file(save_path)
 
         logging.info("The data was saved!")
 
@@ -149,6 +155,19 @@ class Preprocess:
         self.df['emojis'] = self.df.apply(self.__interpret_emojis, axis=1)
         self.df['text'] = self.df.apply(self.__remove_emojis, axis=1)
 
+    def translate_row(self, row: pd.DataFrame):
+        translator = Translator()
+
+        try:
+            translated = translator.translate(row["text"], dest=self.language)
+            return translated.text
+        except:
+            return None
+
+    def translate(self) -> None:
+        self.df['text'] = self.df.apply(self.translate_row, axis=1)
+        self.df.dropna(subset=["text"], inplace=True)
+
     @staticmethod
     def __remove_unicode_chars_row(row: pd.DataFrame) -> str:
         """
@@ -183,8 +202,7 @@ class Preprocess:
 
         self.df['text'] = self.df.apply(self.__remove_punctuation_row, axis=1)
 
-    @staticmethod
-    def __check_spelling_row(row: pd.DataFrame) -> str:
+    def __check_spelling_row(self, row: pd.DataFrame) -> str:
         """
         Method to check spelling in text.
         :param row: row from dataframe
@@ -192,7 +210,7 @@ class Preprocess:
         """
 
         text_tokens = word_tokenize(row['text'])
-        dictionary = Dictionary.from_files('en_US')
+        dictionary = Dictionary.from_files(self.language)
         new_text = []
 
         for word in text_tokens:
@@ -301,7 +319,7 @@ class Preprocess:
 
         return save_path
 
-    def save_to_json(self, save_path: str = None) -> None:
+    def save_file(self, save_path: str = None) -> None:
         """
         Method saves preprocessed data to .json file. If path is not determined,
         data is saved under automatically generated path.

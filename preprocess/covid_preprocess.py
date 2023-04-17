@@ -10,14 +10,15 @@ class CovidPreprocess(Preprocess):
     The class responsible for preprocessing covid data.
     """
 
-    def __init__(self, path: str = COVID_DATA_PATH) -> None:
+    def __init__(self, path: str = COVID_DATA_PATH, language="en_US") -> None:
         """
         Constructs all the necessary attributes for the **CovidPreprocess** class object.
         :param path: path to dataset (*covid* default)
+        :param language: selected language
         """
 
         prepared_data = self.prepare_covid_data(path)
-        super().__init__(prepared_data, path)
+        super().__init__(prepared_data, path, language)
 
     @staticmethod
     def prepare_covid_data(path: str = COVID_DATA_PATH) -> pd.DataFrame:
