@@ -5,17 +5,18 @@ from transformers import AutoTokenizer
 import pyarrow as pa
 from datasets import Dataset, DatasetDict
 import pandas as pd
+import numpy as np
 from sklearn.model_selection import train_test_split
 
 class Model:
-    def __init__(self, model_name, useGPU=False) -> None:
+    def __init__(self, model_path, useGPU=False) -> None:
         if useGPU:
             # TODO: create training with CUDA
-            self.model = TFAutoModelForSequenceClassification.from_pretrained(model_name).to("cuda")
-            self.tokenizer = AutoTokenizer.from_pretrained(model_name).to("cuda")
+            self.model = TFAutoModelForSequenceClassification.from_pretrained(model_path).to("cuda")
+            self.tokenizer = AutoTokenizer.from_pretrained(model_path).to("cuda")
         else:
-            self.model = TFAutoModelForSequenceClassification.from_pretrained(model_name)
-            self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+            self.model = TFAutoModelForSequenceClassification.from_pretrained(model_path)
+            self.tokenizer = AutoTokenizer.from_pretrained(model_path)
 
     @staticmethod
     def create_dataset(data):
@@ -56,16 +57,30 @@ class Model:
         return tf_train, tf_test
 
     def compile(self):
-        # loss = keras.losses.SparseCategoricalCrossentropy(from_logits=True)
-        # metrics = keras.metrics.SparseCategoricalAccuracy('accuracy')
-        # self.model.compile(optimizer=Adam(3e-5), loss=loss, metrics=[metrics])
-        self.model.compile(optimizer=Adam(3e-5))
+        loss = keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+        metrics = keras.metrics.SparseCategoricalAccuracy('accuracy')
+        self.model.compile(optimizer=Adam(3e-5), loss=loss, metrics=[metrics])
 
-    def fit(self, dataset, epochs=3):
-        return self.model.fit(dataset, epochs=epochs)
+    def fit(self, train_data, validation_data, epochs=3):
+        return self.model.fit(train_data, epochs=epochs, validation_data=validation_data)
 
     def evaluate(self, dataset):
         return self.model.evaluate(dataset)
+
+    @staticmethod
+    def load_saved_model(model_path, useGPU=False):
+        return Model(model_path=model_path, useGPU=useGPU)
+
+    def classify_text(self, text):
+        encoded_text = self.tokenizer.encode(text, truncation=True, padding=True, return_tensors='tf')
+        prediction = self.model(encoded_text).logits.numpy()[0]
+        probs = np.exp(prediction) / np.sum(np.exp(prediction))
+        predicted_class = np.argmax(probs)
+
+        print("Predicted class:", predicted_class)
+        print("Probability distribution:", probs)
+
+        return [predicted_class, probs]
 
     def save_model(self, save_path):
         self.tokenizer.save_pretrained(save_path)
