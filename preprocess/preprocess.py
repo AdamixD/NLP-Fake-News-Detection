@@ -66,8 +66,8 @@ class Preprocess:
         logging.info("Checking spelling ...")
         self.check_spelling()
 
-        logging.info("Analyzing sentiment ...")
-        self.analyze_sentiment()
+        #logging.info("Analyzing sentiment ...")
+        #self.analyze_sentiment()
 
         logging.info("Converting to lowercase ...")
         self.convert_to_lowercase()
