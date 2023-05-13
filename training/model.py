@@ -8,9 +8,11 @@ from datasets import Dataset, DatasetDict
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import f1_score, accuracy_score
 
 class Model:
     def __init__(self, model_path, useGPU=False) -> None:
+        # K.clear_session()
         if useGPU:
             # TODO: create training with CUDA
             self.model = TFAutoModelForSequenceClassification.from_pretrained(model_path).to("cuda")
@@ -37,7 +39,7 @@ class Model:
         return dataset.from_pandas(data)
 
     def tokenize_dataset(self, dataset):
-        return self.tokenizer(dataset["text"])
+        return self.tokenizer(dataset["text"][:511])
 
     def prepare_dataset(self, dataset):
         dataset = dataset.map(self.tokenize_dataset)
@@ -64,19 +66,23 @@ class Model:
 
     def fit(self, train_data, validation_data, epochs=3):
         return self.model.fit(train_data, epochs=epochs, validation_data=validation_data)
-    
+
+    @staticmethod
+    def get_true_positive(y_true, y_pred):
+        return K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
+
     def recall_m(self, y_true, y_pred):
-        true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
+        true_positives = self.get_true_positive(y_true, y_pred)
         possible_positives = K.sum(K.round(K.clip(y_true, 0, 1)))
         recall = true_positives / (possible_positives + K.epsilon())
         return recall
 
     def precision_m(self, y_true, y_pred):
-        true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
+        true_positives = self.get_true_positive(y_true, y_pred)
         predicted_positives = K.sum(K.round(K.clip(y_pred, 0, 1)))
         precision = true_positives / (predicted_positives + K.epsilon())
         return precision
-    
+
     def f1_m(self, y_true, y_pred):
         precision = self.precision_m(y_true, y_pred)
         recall = self.recall_m(y_true, y_pred)
